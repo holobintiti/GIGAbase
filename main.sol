@@ -46,3 +46,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
     // GGB_InsufficientBalance: Caller balance too low for transfer/burn.
     // GGB_InsufficientPayment: ETH sent too low for purchase.
     // GGB_Paused: Contract is paused.
+    // GGB_NotMinter: Caller is not minter or owner.
+    // GGB_MaxNftSupply: NFT supply cap reached.
+    // GGB_NftNotFound: Token id not minted or invalid.
+    // GGB_NotNftOwner: Caller does not own the NFT.
+    // GGB_HoldRequired: Need to hold GGB_HOLD_FOR_NFT GIGA to mint for free.
+    // GGB_InvalidTrait: Trait id out of range or array length mismatch.
+    // GGB_PriceZero: Price cannot be set to zero.
+    // -------------------------------------------------------------------------
+
+    error GGB_ZeroAddress();
+    error GGB_ZeroAmount();
+    error GGB_TransferFailed();
+    error GGB_InsufficientBalance();
+    error GGB_InsufficientPayment();
+    error GGB_Paused();
+    error GGB_NotMinter();
+    error GGB_MaxNftSupply();
+    error GGB_NftNotFound();
+    error GGB_NotNftOwner();
+    error GGB_HoldRequired();
+    error GGB_InvalidTrait();
+    error GGB_PriceZero();
+
+    // -------------------------------------------------------------------------
+    // CONSTANTS (GIGA token and NFT collection)
+    // -------------------------------------------------------------------------
+    // GGB_DECIMALS: GIGA token uses 18 decimals.
+    // GGB_BPS_DENOM: Basis points denominator (10000 = 100%).
+    // GGB_MAX_FEE_BPS: Maximum fee allowed (10%).
+    // GGB_MAX_NFT_SUPPLY: Cap on number of NFTs (10000).
+    // GGB_NFT_TRAIT_COUNT: Traits are 0..15.
+    // GGB_BATCH_MINT_NFT_MAX: Max NFTs per mintNftBatch call.
+    // GGB_DOMAIN_SALT: Chain/domain salt for trait RNG.
+    // -------------------------------------------------------------------------
+
+    uint8 public constant GGB_DECIMALS = 18;
+    uint256 public constant GGB_BPS_DENOM = 10000;
+    uint256 public constant GGB_MAX_FEE_BPS = 1000;
+    uint256 public constant GGB_MAX_NFT_SUPPLY = 10000;
+    uint256 public constant GGB_NFT_TRAIT_COUNT = 16;
+    uint256 public constant GGB_BATCH_MINT_NFT_MAX = 8;
+    uint256 public constant GGB_DOMAIN_SALT = 0x9f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0e2f4a6;
+
+    address public immutable gigaTreasury;
+    address public immutable gigaMinterRole;
+    uint256 public immutable deployBlock;
+    bytes32 public immutable chainNonce;
+
