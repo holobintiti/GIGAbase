@@ -334,3 +334,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
 
     /// @param tokenId NFT token id.
     /// @return owner_ Current owner.
+    /// @return traitId Trait index 0..15.
+    /// @return mintedAtBlock Block at mint.
+    function getNft(uint256 tokenId) external view returns (address owner_, uint8 traitId, uint256 mintedAtBlock) {
+        owner_ = nftOwnerOf[tokenId];
+        if (owner_ == address(0)) revert GGB_NftNotFound();
+        return (owner_, nftTraitOf[tokenId], nftMintedAtBlock[tokenId]);
+    }
+
+    /// @param owner_ Wallet address.
+    /// @return Array of NFT token ids owned.
+    function getNftIdsByOwner(address owner_) external view returns (uint256[] memory) {
+        return _nftIdsByOwner[owner_];
+    }
+
+    /// @return All minted NFT token ids.
+    function getAllNftIds() external view returns (uint256[] memory) {
+        return _allNftIds;
+    }
+
+    /// @param offset Start index.
+    /// @param limit Max number of ids to return.
+    /// @return tokenIds Slice of _allNftIds.
+    function getNftIdsPaginated(uint256 offset, uint256 limit) external view returns (uint256[] memory) {
+        uint256 len = _allNftIds.length;
+        if (offset >= len) return new uint256[](0);
+        uint256 end = offset + limit;
+        if (end > len) end = len;
+        uint256 n = end - offset;
+        uint256[] memory out = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) out[i] = _allNftIds[offset + i];
+        return out;
+    }
+
+    /// @return Snapshot of main config (treasury, fee recipient, minter, prices, supply, paused).
+    function getConfigSnapshot() external view returns (
+        address gigaTreasury_,
+        address gigaFeeRecipient_,
+        address gigaMinter_,
+        uint256 deployBlock_,
+        uint256 gigaPriceWei_,
+        uint256 nftMintPriceWei_,
+        uint256 totalGigaSupply_,
+        uint256 totalNftMinted_,
+        uint256 treasuryBalance_,
+        bool gigaPaused_
+    ) {
+        return (
+            gigaTreasury,
