@@ -142,3 +142,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
 
     /// @notice Set fee recipient (receives fee share on buy and NFT mint). Owner only.
     function setFeeRecipient(address newRecipient) external onlyOwner {
+        if (newRecipient == address(0)) revert GGB_ZeroAddress();
+        address prev = gigaFeeRecipient;
+        gigaFeeRecipient = newRecipient;
+        emit FeeRecipientUpdated(prev, newRecipient);
+    }
+
+    /// @notice Set minter address (can mint GIGA and mint NFT with specific trait). Owner only.
+    function setMinter(address newMinter) external onlyOwner {
+        if (newMinter == address(0)) revert GGB_ZeroAddress();
+        address prev = gigaMinter;
+        gigaMinter = newMinter;
+        emit MinterUpdated(prev, newMinter);
+    }
+
+    /// @notice Set GIGA price in wei per full token (18 decimals). Owner only.
+    function setGigaPriceWei(uint256 newPrice) external onlyOwner {
+        if (newPrice == 0) revert GGB_PriceZero();
+        uint256 prev = gigaPriceWei;
+        gigaPriceWei = newPrice;
+        emit GigaPriceUpdated(prev, newPrice);
+    }
+
+    /// @notice Set NFT mint price in wei (when paying with ETH). Owner only.
+    function setNftMintPriceWei(uint256 newPrice) external onlyOwner {
+        uint256 prev = nftMintPriceWei;
+        nftMintPriceWei = newPrice;
+        emit NftMintPriceUpdated(prev, newPrice);
+    }
+
+    /// @notice Set protocol fee in basis points (max GGB_MAX_FEE_BPS). Owner only.
+    function setFeeBps(uint256 newBps) external onlyOwner {
+        if (newBps > GGB_MAX_FEE_BPS) revert GGB_InvalidTrait();
+        feeBps = newBps;
+    }
+
+    /// @notice Purchase GIGA tokens with ETH. Fee is sent to fee recipient; remainder accrues to treasury balance.
+    /// @return gigaReceived Amount of GIGA minted (18 decimals).
+    function buyGiga() external payable whenNotPaused nonReentrant returns (uint256 gigaReceived) {
+        if (msg.value == 0) revert GGB_ZeroAmount();
+        if (gigaPriceWei == 0) revert GGB_PriceZero();
+        gigaReceived = (msg.value * (10 ** GGB_DECIMALS)) / gigaPriceWei;
+        if (gigaReceived == 0) revert GGB_InsufficientPayment();
+
+        uint256 feeWei = (msg.value * feeBps) / GGB_BPS_DENOM;
+        uint256 toTreasury = msg.value - feeWei;
+        treasuryBalance += toTreasury;
+        if (feeWei > 0) {
+            (bool sent,) = gigaFeeRecipient.call{value: feeWei}("");
