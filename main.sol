@@ -238,3 +238,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
 
     uint256 public constant GGB_HOLD_FOR_NFT = 1000 * (10 ** 18);
 
+    /// @notice Mint one NFT. Either send >= nftMintPriceWei ETH or hold >= GGB_HOLD_FOR_NFT GIGA.
+    /// @return tokenId The minted NFT token id.
+    function mintNft() external payable whenNotPaused nonReentrant returns (uint256 tokenId) {
+        if (totalNftMinted >= GGB_MAX_NFT_SUPPLY) revert GGB_MaxNftSupply();
+
+        bool payWithEth = msg.value >= nftMintPriceWei;
+        if (!payWithEth) {
+            if (balanceOfGiga[msg.sender] < GGB_HOLD_FOR_NFT) revert GGB_HoldRequired();
+        }
+
+        tokenId = totalNftMinted + 1;
+        totalNftMinted = tokenId;
+
+        uint8 traitId = _computeTraitId(msg.sender, tokenId, 0);
+
+        nftOwnerOf[tokenId] = msg.sender;
+        nftTraitOf[tokenId] = traitId;
+        nftMintedAtBlock[tokenId] = block.number;
+        _nftIdsByOwner[msg.sender].push(tokenId);
+        _allNftIds.push(tokenId);
+
+        if (payWithEth) {
+            uint256 feeWei = (msg.value * feeBps) / GGB_BPS_DENOM;
+            uint256 toTreasury = msg.value - feeWei;
+            treasuryBalance += toTreasury;
+            if (feeWei > 0) {
+                (bool sent,) = gigaFeeRecipient.call{value: feeWei}("");
+                if (!sent) revert GGB_TransferFailed();
+            }
+            emit GigaNftPurchased(msg.sender, tokenId, msg.value, block.number);
+        }
+        emit GigaNftMinted(msg.sender, tokenId, traitId, block.number);
+        return tokenId;
+    }
+
+    /// @notice Mint one NFT with a specific trait. Minter only.
+    /// @param traitId Trait index 0..GGB_NFT_TRAIT_COUNT-1.
+    /// @return tokenId The minted NFT token id.
+    function mintNftWithTrait(uint8 traitId) external onlyMinterRole whenNotPaused nonReentrant returns (uint256 tokenId) {
+        if (traitId >= GGB_NFT_TRAIT_COUNT) revert GGB_InvalidTrait();
+        if (totalNftMinted >= GGB_MAX_NFT_SUPPLY) revert GGB_MaxNftSupply();
+
+        tokenId = totalNftMinted + 1;
+        totalNftMinted = tokenId;
+
+        nftOwnerOf[tokenId] = msg.sender;
+        nftTraitOf[tokenId] = traitId;
+        nftMintedAtBlock[tokenId] = block.number;
