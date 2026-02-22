@@ -478,3 +478,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
     /// @param accounts Addresses to query.
     /// @return balances GIGA balance for each account.
     function getGigaBalancesBatch(address[] calldata accounts) external view returns (uint256[] memory balances) {
+        uint256 n = accounts.length;
+        balances = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) balances[i] = balanceOfGiga[accounts[i]];
+    }
+
+    /// @return counts Per-trait mint count (index 0..15).
+    function getTraitCounts() external view returns (uint256[] memory counts) {
+        counts = new uint256[](GGB_NFT_TRAIT_COUNT);
+        for (uint256 i = 0; i < _allNftIds.length; i++) {
+            uint8 t = nftTraitOf[_allNftIds[i]];
+            counts[t]++;
+        }
+    }
+
+    /// @param account Wallet address.
+    /// @return gigaBalance GIGA balance.
+    /// @return nftCount Number of NFTs owned.
+    /// @return nftIds Array of owned NFT ids.
+    function getHolderStats(address account) external view returns (
+        uint256 gigaBalance,
+        uint256 nftCount,
+        uint256[] memory nftIds
+    ) {
+        gigaBalance = balanceOfGiga[account];
+        nftIds = _nftIdsByOwner[account];
+        nftCount = nftIds.length;
+    }
+
+    /// @return Current block number.
+    function currentBlockNumber() external view returns (uint256) {
+        return block.number;
+    }
+
+    /// @param account Address to check.
+    /// @return True if account holds >= GGB_HOLD_FOR_NFT and supply allows mint.
+    function canMintNftForFree(address account) external view returns (bool) {
+        return balanceOfGiga[account] >= GGB_HOLD_FOR_NFT && totalNftMinted < GGB_MAX_NFT_SUPPLY;
+    }
+
+    /// @param ethWei ETH amount in wei.
+    /// @return gigaAmount GIGA that would be received (18 decimals).
+    function quoteGigaForEth(uint256 ethWei) external view returns (uint256 gigaAmount) {
+        if (gigaPriceWei == 0) return 0;
+        return (ethWei * (10 ** GGB_DECIMALS)) / gigaPriceWei;
+    }
+
+    /// @param gigaAmount GIGA amount (18 decimals).
+    /// @return ethWei ETH cost in wei.
