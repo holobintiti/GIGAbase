@@ -94,3 +94,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
     uint256 public immutable deployBlock;
     bytes32 public immutable chainNonce;
 
+    address public gigaFeeRecipient;
+    address public gigaMinter;
+    uint256 public gigaPriceWei;
+    uint256 public nftMintPriceWei;
+    uint256 public feeBps;
+    bool public gigaPaused;
+    uint256 public totalGigaSupply;
+    uint256 public totalNftMinted;
+    uint256 public treasuryBalance;
+
+    mapping(address => uint256) public balanceOfGiga;
+    mapping(uint256 => address) public nftOwnerOf;
+    mapping(uint256 => uint8) public nftTraitOf;
+    mapping(uint256 => uint256) public nftMintedAtBlock;
+    mapping(address => uint256[]) private _nftIdsByOwner;
+
+    uint256[] private _allNftIds;
+
+    modifier whenNotPaused() {
+        if (gigaPaused) revert GGB_Paused();
+        _;
+    }
+
+    modifier onlyMinterRole() {
+        if (msg.sender != gigaMinter && msg.sender != owner()) revert GGB_NotMinter();
+        _;
+    }
+
+    constructor() {
+        gigaTreasury = address(0x7b3E9f1A2c4D6e8F0a2B4c6D8e0F2a4B6c8D0e2);
+        gigaFeeRecipient = address(0x8c4F0a2B3d5E7f9A1b3C5d7E9f1A3b5C7d9E1f);
+        gigaMinterRole = address(0x9d5A1b3C4e6F8a0B2c4D6e8F0a2B4c6D8e0F2);
+        gigaMinter = address(0xae6B2c4D5f7A9b1C3d5E7f9A1b3C5d7E9f1A3);
+        deployBlock = block.number;
+        chainNonce = keccak256(abi.encodePacked("GIGAbase_", block.chainid, block.timestamp, address(this)));
+        gigaPriceWei = 1e12;
+        nftMintPriceWei = 1e15;
+        feeBps = 500;
+    }
+
+    /// @notice Pause or unpause buys, transfers, mints. Owner only.
+    function setPaused(bool paused) external onlyOwner {
+        gigaPaused = paused;
+        emit PauseToggled(paused);
+    }
+
+    /// @notice Set fee recipient (receives fee share on buy and NFT mint). Owner only.
+    function setFeeRecipient(address newRecipient) external onlyOwner {
