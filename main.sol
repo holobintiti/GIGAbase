@@ -286,3 +286,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
         nftOwnerOf[tokenId] = msg.sender;
         nftTraitOf[tokenId] = traitId;
         nftMintedAtBlock[tokenId] = block.number;
+        _nftIdsByOwner[msg.sender].push(tokenId);
+        _allNftIds.push(tokenId);
+
+        emit GigaNftMinted(msg.sender, tokenId, traitId, block.number);
+        return tokenId;
+    }
+
+    /// @notice Transfer NFT to another address. Caller must own the NFT.
+    /// @param to New owner (cannot be zero).
+    /// @param tokenId NFT token id.
+    function transferNft(address to, uint256 tokenId) external whenNotPaused nonReentrant {
+        if (to == address(0)) revert GGB_ZeroAddress();
+        if (nftOwnerOf[tokenId] != msg.sender) revert GGB_NotNftOwner();
+
+        nftOwnerOf[tokenId] = to;
+        _nftIdsByOwner[to].push(tokenId);
+        _removeNftFromOwner(msg.sender, tokenId);
+        emit GigaNftTransfer(msg.sender, to, tokenId, block.number);
+    }
+
+    function _removeNftFromOwner(address owner_, uint256 tokenId) internal {
+        uint256[] storage ids = _nftIdsByOwner[owner_];
+        for (uint256 i = 0; i < ids.length; i++) {
+            if (ids[i] == tokenId) {
+                ids[i] = ids[ids.length - 1];
+                ids.pop();
+                break;
+            }
+        }
+    }
+
+    function _computeTraitId(address minter_, uint256 tokenId, uint256 nonce) internal view returns (uint8) {
+        return uint8(uint256(keccak256(abi.encodePacked(block.prevrandao, minter_, tokenId, nonce, GGB_DOMAIN_SALT))) % GGB_NFT_TRAIT_COUNT);
+    }
+
+    /// @notice Withdraw accumulated treasury balance to gigaTreasury. Callable by owner or gigaTreasury.
+    function withdrawTreasury() external nonReentrant {
+        if (msg.sender != owner() && msg.sender != gigaTreasury) revert GGB_ZeroAddress();
+        uint256 amount = treasuryBalance;
+        if (amount == 0) revert GGB_ZeroAmount();
+        treasuryBalance = 0;
+        (bool sent,) = gigaTreasury.call{value: amount}("");
+        if (!sent) revert GGB_TransferFailed();
+        emit TreasuryWithdrawn(gigaTreasury, amount, block.number);
+    }
+
+    /// @param tokenId NFT token id.
+    /// @return owner_ Current owner.
