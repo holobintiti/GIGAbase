@@ -574,3 +574,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
         for (uint256 i = 0; i < _allNftIds.length; i++) {
             if (nftTraitOf[_allNftIds[i]] == traitId) {
                 tokenIds[j] = _allNftIds[i];
+                j++;
+            }
+        }
+    }
+
+    function getNftIdsByTraitPaginated(uint8 traitId, uint256 offset, uint256 limit) external view returns (uint256[] memory tokenIds) {
+        if (traitId >= GGB_NFT_TRAIT_COUNT) return new uint256[](0);
+        uint256[] memory full = new uint256[](_allNftIds.length);
+        uint256 count = 0;
+        for (uint256 i = 0; i < _allNftIds.length; i++) {
+            if (nftTraitOf[_allNftIds[i]] == traitId) {
+                full[count] = _allNftIds[i];
+                count++;
+            }
+        }
+        if (offset >= count) return new uint256[](0);
+        uint256 end = offset + limit;
+        if (end > count) end = count;
+        uint256 n = end - offset;
+        tokenIds = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) tokenIds[i] = full[offset + i];
+    }
+
+    struct NftView {
+        uint256 tokenId;
+        address owner;
+        uint8 traitId;
+        uint256 mintedAtBlock;
+    }
+
+    function getFullNftView(uint256 tokenId) external view returns (NftView memory v) {
+        v.owner = nftOwnerOf[tokenId];
+        if (v.owner == address(0)) revert GGB_NftNotFound();
+        v.tokenId = tokenId;
+        v.traitId = nftTraitOf[tokenId];
+        v.mintedAtBlock = nftMintedAtBlock[tokenId];
+    }
+
+    function getFullNftViewBatch(uint256[] calldata tokenIds) external view returns (NftView[] memory views) {
+        uint256 n = tokenIds.length;
+        views = new NftView[](n);
+        for (uint256 i = 0; i < n; i++) {
+            uint256 tid = tokenIds[i];
+            views[i] = NftView({
+                tokenId: tid,
+                owner: nftOwnerOf[tid],
+                traitId: nftTraitOf[tid],
+                mintedAtBlock: nftMintedAtBlock[tid]
