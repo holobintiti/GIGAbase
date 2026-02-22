@@ -190,3 +190,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
         treasuryBalance += toTreasury;
         if (feeWei > 0) {
             (bool sent,) = gigaFeeRecipient.call{value: feeWei}("");
+            if (!sent) revert GGB_TransferFailed();
+        }
+
+        totalGigaSupply += gigaReceived;
+        balanceOfGiga[msg.sender] += gigaReceived;
+        emit GigaMint(msg.sender, gigaReceived, block.number);
+        emit GigaPurchased(msg.sender, msg.value, gigaReceived, block.number);
+        return gigaReceived;
+    }
+
+    /// @notice Transfer GIGA to another address.
+    /// @param to Recipient (cannot be zero).
+    /// @param amount Amount in 18 decimals.
+    function transferGiga(address to, uint256 amount) external whenNotPaused nonReentrant {
+        if (to == address(0)) revert GGB_ZeroAddress();
+        if (amount == 0) revert GGB_ZeroAmount();
+        if (balanceOfGiga[msg.sender] < amount) revert GGB_InsufficientBalance();
+
+        balanceOfGiga[msg.sender] -= amount;
+        balanceOfGiga[to] += amount;
+        emit GigaTransfer(msg.sender, to, amount, block.number);
+    }
+
+    /// @notice Mint GIGA to an address. Minter or owner only.
+    /// @param to Recipient.
+    /// @param amount Amount in 18 decimals.
+    function mintGiga(address to, uint256 amount) external onlyMinterRole whenNotPaused nonReentrant {
+        if (to == address(0)) revert GGB_ZeroAddress();
+        if (amount == 0) revert GGB_ZeroAmount();
+
+        totalGigaSupply += amount;
+        balanceOfGiga[to] += amount;
+        emit GigaMint(to, amount, block.number);
+    }
+
+    /// @notice Burn GIGA from caller. Reduces total supply.
+    /// @param amount Amount in 18 decimals.
+    function burnGiga(uint256 amount) external whenNotPaused nonReentrant {
+        if (amount == 0) revert GGB_ZeroAmount();
+        if (balanceOfGiga[msg.sender] < amount) revert GGB_InsufficientBalance();
+
+        balanceOfGiga[msg.sender] -= amount;
+        totalGigaSupply -= amount;
+        emit GigaBurn(msg.sender, amount, block.number);
+    }
+
+    uint256 public constant GGB_HOLD_FOR_NFT = 1000 * (10 ** 18);
+
