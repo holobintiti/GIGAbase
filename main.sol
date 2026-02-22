@@ -526,3 +526,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
 
     /// @param gigaAmount GIGA amount (18 decimals).
     /// @return ethWei ETH cost in wei.
+    function quoteEthForGiga(uint256 gigaAmount) external view returns (uint256 ethWei) {
+        if (gigaPriceWei == 0) return 0;
+        return (gigaAmount * gigaPriceWei) / (10 ** GGB_DECIMALS);
+    }
+
+    function name() external pure returns (string memory) {
+        return "GIGA";
+    }
+
+    function symbol() external pure returns (string memory) {
+        return "GIGA";
+    }
+
+    function totalSupply() external view returns (uint256) {
+        return totalGigaSupply;
+    }
+
+    /// @param ethWei ETH amount in wei.
+    /// @return gigaReceived GIGA that would be minted.
+    /// @return feeWei Fee that would go to fee recipient.
+    /// @return treasuryWei Amount that would accrue to treasury.
+    function getBuyQuote(uint256 ethWei) external view returns (uint256 gigaReceived, uint256 feeWei, uint256 treasuryWei) {
+        if (gigaPriceWei == 0 || ethWei == 0) return (0, 0, 0);
+        gigaReceived = (ethWei * (10 ** GGB_DECIMALS)) / gigaPriceWei;
+        feeWei = (ethWei * feeBps) / GGB_BPS_DENOM;
+        treasuryWei = ethWei - feeWei;
+    }
+
+    /// @return ethRequired ETH required to mint one NFT.
+    /// @return gigaHoldRequired GIGA hold required to mint for free.
+    /// @return canMintFree True if caller can mint without paying ETH.
+    function getNftMintQuote(address account) external view returns (uint256 ethRequired, uint256 gigaHoldRequired, bool canMintFree) {
+        ethRequired = nftMintPriceWei;
+        gigaHoldRequired = GGB_HOLD_FOR_NFT;
+        canMintFree = balanceOfGiga[account] >= GGB_HOLD_FOR_NFT && totalNftMinted < GGB_MAX_NFT_SUPPLY;
+    }
+
+    function getNftIdsByTrait(uint8 traitId) external view returns (uint256[] memory tokenIds) {
+        if (traitId >= GGB_NFT_TRAIT_COUNT) return new uint256[](0);
+        uint256 count = 0;
+        for (uint256 i = 0; i < _allNftIds.length; i++) {
+            if (nftTraitOf[_allNftIds[i]] == traitId) count++;
+        }
+        tokenIds = new uint256[](count);
+        uint256 j = 0;
+        for (uint256 i = 0; i < _allNftIds.length; i++) {
+            if (nftTraitOf[_allNftIds[i]] == traitId) {
+                tokenIds[j] = _allNftIds[i];
