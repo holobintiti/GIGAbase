@@ -382,3 +382,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
     ) {
         return (
             gigaTreasury,
+            gigaFeeRecipient,
+            gigaMinter,
+            deployBlock,
+            gigaPriceWei,
+            nftMintPriceWei,
+            totalGigaSupply,
+            totalNftMinted,
+            treasuryBalance,
+            gigaPaused
+        );
+    }
+
+    /// @notice Mint GIGA to multiple addresses. Minter or owner only.
+    /// @param tos Recipients (same length as amounts).
+    /// @param amounts Amounts in 18 decimals per recipient.
+    function mintGigaBatch(address[] calldata tos, uint256[] calldata amounts) external onlyMinterRole whenNotPaused nonReentrant {
+        if (tos.length != amounts.length) revert GGB_InvalidTrait();
+        uint256 total = 0;
+        for (uint256 i = 0; i < tos.length; i++) {
+            if (tos[i] == address(0)) revert GGB_ZeroAddress();
+            if (amounts[i] == 0) continue;
+            balanceOfGiga[tos[i]] += amounts[i];
+            total += amounts[i];
+            emit GigaMint(tos[i], amounts[i], block.number);
+        }
+        if (total > 0) {
+            totalGigaSupply += total;
+            emit GigaBatchMint(msg.sender, total, block.number);
+        }
+    }
+
+    /// @notice Mint multiple NFTs in one tx. Pay with ETH (count * nftMintPriceWei) or hold count * GGB_HOLD_FOR_NFT GIGA.
+    /// @param count Number of NFTs to mint (max GGB_BATCH_MINT_NFT_MAX).
+    /// @return tokenIds Minted token ids.
+    function mintNftBatch(uint256 count) external payable whenNotPaused nonReentrant returns (uint256[] memory tokenIds) {
+        if (count == 0 || count > GGB_BATCH_MINT_NFT_MAX) revert GGB_InvalidTrait();
+        if (totalNftMinted + count > GGB_MAX_NFT_SUPPLY) revert GGB_MaxNftSupply();
+
+        uint256 requiredEth = nftMintPriceWei * count;
+        bool payWithEth = msg.value >= requiredEth;
+        if (!payWithEth) {
+            if (balanceOfGiga[msg.sender] < GGB_HOLD_FOR_NFT * count) revert GGB_HoldRequired();
+        }
+
+        tokenIds = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            uint256 tokenId = totalNftMinted + 1;
+            totalNftMinted = tokenId;
