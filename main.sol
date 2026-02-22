@@ -430,3 +430,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
         for (uint256 i = 0; i < count; i++) {
             uint256 tokenId = totalNftMinted + 1;
             totalNftMinted = tokenId;
+            uint8 traitId = _computeTraitId(msg.sender, tokenId, i);
+
+            nftOwnerOf[tokenId] = msg.sender;
+            nftTraitOf[tokenId] = traitId;
+            nftMintedAtBlock[tokenId] = block.number;
+            _nftIdsByOwner[msg.sender].push(tokenId);
+            _allNftIds.push(tokenId);
+            tokenIds[i] = tokenId;
+            emit GigaNftMinted(msg.sender, tokenId, traitId, block.number);
+        }
+
+        if (payWithEth && msg.value > 0) {
+            uint256 feeWei = (msg.value * feeBps) / GGB_BPS_DENOM;
+            uint256 toTreasury = msg.value - feeWei;
+            treasuryBalance += toTreasury;
+            if (feeWei > 0) {
+                (bool sent,) = gigaFeeRecipient.call{value: feeWei}("");
+                if (!sent) revert GGB_TransferFailed();
+            }
+        }
+        emit GigaNftBatchMinted(msg.sender, tokenIds, block.number);
+        return tokenIds;
+    }
+
+    /// @param tokenIds Token ids to query.
+    /// @return owners Owners for each id.
+    /// @return traits Trait for each id.
+    /// @return mintedAtBlocks Mint block for each id.
+    function getNftsBatch(uint256[] calldata tokenIds) external view returns (
+        address[] memory owners,
+        uint8[] memory traits,
+        uint256[] memory mintedAtBlocks
+    ) {
+        uint256 n = tokenIds.length;
+        owners = new address[](n);
+        traits = new uint8[](n);
+        mintedAtBlocks = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) {
+            uint256 tid = tokenIds[i];
+            owners[i] = nftOwnerOf[tid];
+            traits[i] = nftTraitOf[tid];
+            mintedAtBlocks[i] = nftMintedAtBlock[tid];
+        }
+    }
+
+    /// @param accounts Addresses to query.
+    /// @return balances GIGA balance for each account.
+    function getGigaBalancesBatch(address[] calldata accounts) external view returns (uint256[] memory balances) {
