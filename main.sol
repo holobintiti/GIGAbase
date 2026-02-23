@@ -958,3 +958,45 @@ contract GIGAbase is ReentrancyGuard, Ownable {
 // getBuyQuote(ethWei) and getSaleProceedsBreakdown(ethWei) return (giga, feeWei, treasuryWei).
 // getNftMintQuote(account) returns (ethRequired, gigaHoldRequired, canMintFree).
 // getTraitRarity(traitId) returns (count, bps) for that trait. getTraitCounts() returns full array.
+// getSupplyInfo() returns (totalGigaSupply, totalNftMinted, remaining nft supply).
+// getMintableNftCount() = GGB_MAX_NFT_SUPPLY - totalNftMinted (or 0 if capped).
+// getNftRange(fromId, toId) returns token ids and owners/traits in range (inclusive).
+// getMultipleHolderStats(accounts) returns giga balances and nft counts per account.
+// getFullNftView(tokenId) and getFullNftViewBatch(ids) return NftView struct (tokenId, owner, traitId, mintedAtBlock).
+// getRecentMints(count) returns last N minted (tokenIds, owners, traits). getNftExists(tokenId) checks if minted.
+// getBuySimulation(ethWei) same as getBuyQuote. getTreasuryBalance(), getFeeBps(), getGigaPriceWei(), getNftMintPriceWei(), isPaused() are convenience views.
+// decimals(), maxNftSupply(), holdForNft(), batchMintNftMax(), nftTraitCount() return constants.
+//
+// Line-by-line index for auditors and integrators (GIGAbase):
+// Events: GigaTransfer, GigaMint, GigaBurn, GigaPurchased, GigaNftMinted, GigaNftTransfer, GigaNftPurchased,
+//   TreasuryWithdrawn, FeeRecipientUpdated, MinterUpdated, PauseToggled, GigaPriceUpdated, NftMintPriceUpdated,
+//   GigaBatchMint, GigaNftBatchMinted.
+// Errors: GGB_ZeroAddress, GGB_ZeroAmount, GGB_TransferFailed, GGB_InsufficientBalance, GGB_InsufficientPayment,
+//   GGB_Paused, GGB_NotMinter, GGB_MaxNftSupply, GGB_NftNotFound, GGB_NotNftOwner, GGB_HoldRequired, GGB_InvalidTrait, GGB_PriceZero.
+// Constants: GGB_DECIMALS 18, GGB_BPS_DENOM 10000, GGB_MAX_FEE_BPS 1000, GGB_MAX_NFT_SUPPLY 10000,
+//   GGB_NFT_TRAIT_COUNT 16, GGB_BATCH_MINT_NFT_MAX 8, GGB_DOMAIN_SALT (hex), GGB_HOLD_FOR_NFT 1000e18.
+// Immutable: gigaTreasury, gigaMinterRole, deployBlock, chainNonce.
+// Mutable config: gigaFeeRecipient, gigaMinter, gigaPriceWei, nftMintPriceWei, feeBps, gigaPaused.
+// State: totalGigaSupply, totalNftMinted, treasuryBalance, balanceOfGiga, nftOwnerOf, nftTraitOf, nftMintedAtBlock.
+// Modifiers: whenNotPaused, onlyMinterRole.
+// Constructor: sets treasury 0x7b3E..., feeRecipient 0x8c4F..., minterRole 0x9d5A..., minter 0xae6B..., deployBlock, chainNonce, prices, feeBps.
+// Owner: setPaused, setFeeRecipient, setMinter, setGigaPriceWei, setNftMintPriceWei, setFeeBps, withdrawTreasury (or gigaTreasury).
+// User: buyGiga payable, transferGiga, burnGiga, mintNft payable, mintNftBatch payable, transferNft.
+// Minter: mintGiga, mintGigaBatch, mintNftWithTrait.
+// Internal: _removeNftFromOwner, _computeTraitId.
+// View (token): name, symbol, decimals, totalSupply, balanceOfGiga, getGigaBalancesBatch, quoteGigaForEth, quoteEthForGiga.
+// View (NFT): getNft, getNftIdsByOwner, getAllNftIds, getNftIdsPaginated, getNftsBatch, getFullNftView, getFullNftViewBatch,
+//   getNftOwnerBatch, getNftIdsByTrait, getNftIdsByTraitPaginated, getNftCountForTrait, getTraitCounts, getTraitRarity,
+//   getNftRange, getNftExists, getRecentMints.
+// View (config): getConfigSnapshot, getConfigSnapshotFull, getGlobalStats, getSupplyInfo, getMintableNftCount,
+//   getTreasuryBalance, getFeeBps, getGigaPriceWei, getNftMintPriceWei, isPaused, getBuyQuote, getSaleProceedsBreakdown,
+//   getBuySimulation, getNftMintQuote, getDashboard, getHolderStats, getMultipleHolderStats, canMintNftForFree, currentBlockNumber.
+// Pure/view constants: decimals, maxNftSupply, holdForNft, batchMintNftMax, nftTraitCount.
+// Struct: NftView (tokenId, owner, traitId, mintedAtBlock).
+// receive() payable: accrue msg.value to treasuryBalance.
+//
+// Audit checklist: (1) No delegatecall. (2) ReentrancyGuard on all state-changing external. (3) Immutable treasury and minter role.
+// (4) Zero address checks on transfer and config. (5) Fee bps capped by GGB_MAX_FEE_BPS. (6) NFT supply capped by GGB_MAX_NFT_SUPPLY.
+// (7) Trait id bounded by GGB_NFT_TRAIT_COUNT. (8) ETH sends use explicit bool check and revert on failure.
+// (9) Owner-only setters for pause, fee recipient, minter, prices, fee bps. (10) withdrawTreasury restricted to owner or gigaTreasury.
+
