@@ -622,3 +622,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
                 owner: nftOwnerOf[tid],
                 traitId: nftTraitOf[tid],
                 mintedAtBlock: nftMintedAtBlock[tid]
+            });
+        }
+    }
+
+    /// @param count Number of most recently minted NFTs to return.
+    /// @return tokenIds Token ids (newest first).
+    /// @return owners Owners.
+    /// @return traits Trait ids.
+    function getRecentMints(uint256 count) external view returns (uint256[] memory tokenIds, address[] memory owners, uint8[] memory traits) {
+        uint256 len = _allNftIds.length;
+        if (len == 0) return (new uint256[](0), new address[](0), new uint8[](0));
+        if (count > len) count = len;
+        tokenIds = new uint256[](count);
+        owners = new address[](count);
+        traits = new uint8[](count);
+        for (uint256 i = 0; i < count; i++) {
+            uint256 tid = _allNftIds[len - 1 - i];
+            tokenIds[i] = tid;
+            owners[i] = nftOwnerOf[tid];
+            traits[i] = nftTraitOf[tid];
+        }
+    }
+
+    function getConfigSnapshotFull() external view returns (
+        address gigaTreasury_,
+        address gigaFeeRecipient_,
+        address gigaMinter_,
+        uint256 deployBlock_,
+        uint256 gigaPriceWei_,
+        uint256 nftMintPriceWei_,
+        uint256 feeBps_,
+        uint256 totalGigaSupply_,
+        uint256 totalNftMinted_,
+        uint256 treasuryBalance_,
+        uint256 holdForNft_,
+        bool gigaPaused_
+    ) {
+        return (
+            gigaTreasury,
+            gigaFeeRecipient,
+            gigaMinter,
+            deployBlock,
+            gigaPriceWei,
+            nftMintPriceWei,
+            feeBps,
+            totalGigaSupply,
+            totalNftMinted,
+            treasuryBalance,
