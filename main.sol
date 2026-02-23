@@ -862,3 +862,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
 //   getBuyQuote(ethWei), getSaleProceedsBreakdown(ethWei), getNftMintQuote(addr)
 //   quoteGigaForEth(ethWei), quoteEthForGiga(gigaAmount)
 //   canMintNftForFree(addr), getNftExists(tokenId)
+//   getRecentMints(count), getNftRange(fromId, toId), currentBlockNumber()
+// -----------------------------------------------------------------------------
+//
+// EVENTS (indexed where shown):
+//   GigaTransfer(from, to, amount, atBlock)
+//   GigaMint(to, amount, atBlock)
+//   GigaBurn(from, amount, atBlock)
+//   GigaPurchased(buyer, ethSpent, gigaReceived, atBlock)
+//   GigaNftMinted(to, tokenId, traitId, atBlock)
+//   GigaNftTransfer(from, to, tokenId, atBlock)
+//   GigaNftPurchased(buyer, tokenId, ethSpent, atBlock)
+//   TreasuryWithdrawn(to, amountWei, atBlock)
+//   FeeRecipientUpdated(previous, current)
+//   MinterUpdated(previous, current)
+//   PauseToggled(paused)
+//   GigaPriceUpdated(previousWei, newWei)
+//   NftMintPriceUpdated(previousWei, newWei)
+//   GigaBatchMint(to, totalAmount, atBlock)
+//   GigaNftBatchMinted(to, tokenIds, atBlock)
+//
+// IMMUTABLE (set in constructor, never change):
+//   gigaTreasury — receives treasury withdrawals
+//   gigaMinterRole — constructor-set minter role address (reference)
+//   deployBlock — block number at deploy
+//   chainNonce — keccak256 of chainid, timestamp, contract address
+//
+// CONFIGURABLE (owner can update):
+//   gigaFeeRecipient — receives fee share on buy and NFT mint
+//   gigaMinter — can mint GIGA and mint NFT with specific trait
+//   gigaPriceWei — wei per full GIGA token (18 decimals)
+//   nftMintPriceWei — wei to mint one NFT when paying with ETH
+//   feeBps — basis points taken as fee (max 1000 = 10%)
+//   gigaPaused — when true, buy/transfer/mint revert
+//
+// INTEGRATION CHECKLIST:
+// 1. Deploy with no constructor args; treasury, fee recipient, minter are set to fixed addresses.
+// 2. Optionally call setFeeRecipient / setMinter / setGigaPriceWei / setNftMintPriceWei / setFeeBps as owner.
+// 3. Users connect wallet; call buyGiga() with ETH to get GIGA.
+// 4. Users with enough GIGA can mintNft() with no ETH; others send nftMintPriceWei.
+// 5. Frontend can use quoteGigaForEth, getBuyQuote, getNftMintQuote for display.
+// 6. Treasury balance accrues from buys and NFT mints; owner or gigaTreasury calls withdrawTreasury().
+// 7. NFT trait is random 0..15 on mint (or set by minter via mintNftWithTrait).
+// 8. GGB_HOLD_FOR_NFT = 1000e18; holding that much GIGA allows free NFT mint.
+// 9. Max 10000 NFTs; batch mint up to 8 per tx via mintNftBatch(count).
+// 10. All role addresses in constructor are unique and not reused from other contracts.
+//
+// SECURITY:
+// - ReentrancyGuard on all payable and state-changing external functions.
