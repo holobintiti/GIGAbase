@@ -718,3 +718,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
         supply = totalGigaSupply;
         minted = totalNftMinted;
         remaining = minted >= GGB_MAX_NFT_SUPPLY ? 0 : GGB_MAX_NFT_SUPPLY - minted;
+    }
+
+    /// @param tokenId NFT token id.
+    /// @return True if token exists (minted).
+    function getNftExists(uint256 tokenId) external view returns (bool) {
+        return tokenId > 0 && tokenId <= totalNftMinted && nftOwnerOf[tokenId] != address(0);
+    }
+
+    /// @return Number of NFTs that can still be minted.
+    function getMintableNftCount() external view returns (uint256) {
+        if (totalNftMinted >= GGB_MAX_NFT_SUPPLY) return 0;
+        return GGB_MAX_NFT_SUPPLY - totalNftMinted;
+    }
+
+    /// @param fromId First token id (inclusive).
+    /// @param toId Last token id (inclusive).
+    /// @return tokenIds Ids in range that exist.
+    /// @return owners Owners for each.
+    /// @return traits Trait for each.
+    function getNftRange(uint256 fromId, uint256 toId) external view returns (
+        uint256[] memory tokenIds,
+        address[] memory owners,
+        uint8[] memory traits
+    ) {
+        if (fromId > toId || toId == 0) {
+            return (new uint256[](0), new address[](0), new uint8[](0));
+        }
+        if (toId > totalNftMinted) toId = totalNftMinted;
+        uint256 n = toId - fromId + 1;
+        tokenIds = new uint256[](n);
+        owners = new address[](n);
+        traits = new uint8[](n);
+        for (uint256 i = 0; i < n; i++) {
+            uint256 tid = fromId + i;
+            tokenIds[i] = tid;
+            owners[i] = nftOwnerOf[tid];
+            traits[i] = nftTraitOf[tid];
+        }
+    }
+
+    /// @param accounts Addresses to query.
+    /// @return gigaBalances GIGA balance per account.
+    /// @return nftCounts NFT count per account.
+    function getMultipleHolderStats(address[] calldata accounts) external view returns (
+        uint256[] memory gigaBalances,
+        uint256[] memory nftCounts
+    ) {
+        uint256 n = accounts.length;
