@@ -670,3 +670,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
             totalGigaSupply,
             totalNftMinted,
             treasuryBalance,
+            GGB_HOLD_FOR_NFT,
+            gigaPaused
+        );
+    }
+
+    function getNftCountForTrait(uint8 traitId) external view returns (uint256) {
+        if (traitId >= GGB_NFT_TRAIT_COUNT) return 0;
+        uint256 count = 0;
+        for (uint256 i = 0; i < _allNftIds.length; i++) {
+            if (nftTraitOf[_allNftIds[i]] == traitId) count++;
+        }
+        return count;
+    }
+
+    /// @return totalGiga Total GIGA supply.
+    /// @return totalNft Total NFTs minted.
+    /// @return treasuryAccrued Treasury balance.
+    /// @return nftIdsLength Length of _allNftIds.
+    function getGlobalStats() external view returns (uint256 totalGiga, uint256 totalNft, uint256 treasuryAccrued, uint256 nftIdsLength) {
+        return (totalGigaSupply, totalNftMinted, treasuryBalance, _allNftIds.length);
+    }
+
+    /// @param ethWei ETH amount.
+    /// @return gigaReceived GIGA from purchase.
+    /// @return feeWei Fee to fee recipient.
+    /// @return treasuryWei To treasury.
+    function getSaleProceedsBreakdown(uint256 ethWei) external view returns (uint256 gigaReceived, uint256 feeWei, uint256 treasuryWei) {
+        if (gigaPriceWei == 0) return (0, 0, 0);
+        gigaReceived = (ethWei * (10 ** GGB_DECIMALS)) / gigaPriceWei;
+        feeWei = (ethWei * feeBps) / GGB_BPS_DENOM;
+        treasuryWei = ethWei - feeWei;
+    }
+
+    /// @param tokenIds NFT token ids.
+    /// @return owners Owner for each id (zero if not minted).
+    function getNftOwnerBatch(uint256[] calldata tokenIds) external view returns (address[] memory owners) {
+        uint256 n = tokenIds.length;
+        owners = new address[](n);
+        for (uint256 i = 0; i < n; i++) owners[i] = nftOwnerOf[tokenIds[i]];
+    }
+
+    /// @return supply Current GIGA total supply.
+    /// @return minted Current NFT count.
+    /// @return remaining Remaining NFT supply (GGB_MAX_NFT_SUPPLY - minted).
+    function getSupplyInfo() external view returns (uint256 supply, uint256 minted, uint256 remaining) {
+        supply = totalGigaSupply;
+        minted = totalNftMinted;
+        remaining = minted >= GGB_MAX_NFT_SUPPLY ? 0 : GGB_MAX_NFT_SUPPLY - minted;
