@@ -910,3 +910,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
 //
 // SECURITY:
 // - ReentrancyGuard on all payable and state-changing external functions.
+// - No delegatecall or external call to untrusted contracts except ETH send to treasury/fee recipient.
+// - Owner can pause to stop buys, transfers, and mints.
+// - Treasury and minter role addresses are immutable; fee recipient and minter are updatable by owner only.
+// - NFT transfer does not use approval; simple ownership transfer only.
+// - Trait RNG uses block.prevrandao, sender, tokenId, and domain salt; not suitable for high-value randomness.
+//
+// CONSTANT VALUES:
+//   GGB_DECIMALS = 18
+//   GGB_BPS_DENOM = 10000
+//   GGB_MAX_FEE_BPS = 1000
+//   GGB_MAX_NFT_SUPPLY = 10000
+//   GGB_NFT_TRAIT_COUNT = 16
+//   GGB_BATCH_MINT_NFT_MAX = 8
+//   GGB_HOLD_FOR_NFT = 1000 * 10**18 (1000 GIGA with 18 decimals)
+//   GGB_DOMAIN_SALT = fixed hex (see constant in contract)
+//
+// CONSTRUCTOR ADDRESSES (do not reuse on other deployments):
+//   gigaTreasury    = 0x7b3E9f1A2c4D6e8F0a2B4c6D8e0F2a4B6c8D0e2
+//   gigaFeeRecipient = 0x8c4F0a2B3d5E7f9A1b3C5d7E9f1A3b5C7d9E1f
+//   gigaMinterRole  = 0x9d5A1b3C4e6F8a0B2c4D6e8F0a2B4c6D8e0F2
+//   gigaMinter      = 0xae6B2c4D5f7A9b1C3d5E7f9A1b3C5d7E9f1A3
+//
+// ERROR REFERENCE: GGB_ZeroAddress | GGB_ZeroAmount | GGB_TransferFailed | GGB_InsufficientBalance
+//   GGB_InsufficientPayment | GGB_Paused | GGB_NotMinter | GGB_MaxNftSupply | GGB_NftNotFound
+//   GGB_NotNftOwner | GGB_HoldRequired | GGB_InvalidTrait | GGB_PriceZero
+//
+// TRAIT IDs: 0..15. Use getTraitCounts() for distribution. getNftIdsByTrait(traitId) for ids.
+// GAS: Batch views (getNftsBatch, getGigaBalancesBatch) save RPC round-trips. mintNftBatch saves gas vs multiple mintNft.
+// RECEIVE: Contract accepts ETH via receive(); all sent ETH accrues to treasuryBalance.
+//
+// --- Extended reference (GIGAbase) ---
+// All constructor-set addresses are immutable and unique per deployment.
+// gigaTreasury: receives withdrawTreasury(); set once at deploy.
+// gigaFeeRecipient: receives fee share on buyGiga and mintNft (when paying ETH); owner can change via setFeeRecipient.
+// gigaMinterRole: stored at deploy for reference; actual minter is gigaMinter (updatable by owner).
+// gigaMinter: can call mintGiga, mintGigaBatch, mintNftWithTrait.
+// Initial state: gigaPriceWei = 1e12, nftMintPriceWei = 1e15, feeBps = 500 (5%).
+// GGB_HOLD_FOR_NFT = 1000 * 10**18 (1000 GIGA). Holding that much allows mintNft() with no ETH.
+// When minting with ETH, fee is taken (feeBps), rest goes to treasuryBalance.
+// withdrawTreasury() sends full treasuryBalance to gigaTreasury; callable by owner or gigaTreasury.
+// NFT trait is derived from _computeTraitId(minter, tokenId, nonce) % 16 for public mints.
+// mintNftWithTrait(traitId) allows minter to set trait explicitly (traitId 0..15).
+// transferNft(to, tokenId): only current owner can transfer; no approval mechanism.
+// name() and symbol() return "GIGA". decimals() returns 18. totalSupply() returns totalGigaSupply.
+// getDashboard(account) returns balance, nft count, nft ids, canMintFree, ethToMintOne, gigaHoldRequired.
+// getBuyQuote(ethWei) and getSaleProceedsBreakdown(ethWei) return (giga, feeWei, treasuryWei).
+// getNftMintQuote(account) returns (ethRequired, gigaHoldRequired, canMintFree).
+// getTraitRarity(traitId) returns (count, bps) for that trait. getTraitCounts() returns full array.
