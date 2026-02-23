@@ -766,3 +766,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
         uint256[] memory nftCounts
     ) {
         uint256 n = accounts.length;
+        gigaBalances = new uint256[](n);
+        nftCounts = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) {
+            gigaBalances[i] = balanceOfGiga[accounts[i]];
+            nftCounts[i] = _nftIdsByOwner[accounts[i]].length;
+        }
+    }
+
+    /// @param account Wallet to build dashboard for.
+    function getDashboard(address account) external view returns (
+        uint256 gigaBalance,
+        uint256 nftCount,
+        uint256[] memory nftIds,
+        bool canMintFree,
+        uint256 ethToMintOne,
+        uint256 gigaHoldRequired
+    ) {
+        gigaBalance = balanceOfGiga[account];
+        nftIds = _nftIdsByOwner[account];
+        nftCount = nftIds.length;
+        canMintFree = gigaBalance >= GGB_HOLD_FOR_NFT && totalNftMinted < GGB_MAX_NFT_SUPPLY;
+        ethToMintOne = nftMintPriceWei;
+        gigaHoldRequired = GGB_HOLD_FOR_NFT;
+    }
+
+    function getTreasuryBalance() external view returns (uint256) { return treasuryBalance; }
+    function getFeeBps() external view returns (uint256) { return feeBps; }
+    function getGigaPriceWei() external view returns (uint256) { return gigaPriceWei; }
+    function getNftMintPriceWei() external view returns (uint256) { return nftMintPriceWei; }
+    function isPaused() external view returns (bool) { return gigaPaused; }
+
+    function decimals() external pure returns (uint8) { return GGB_DECIMALS; }
+    function maxNftSupply() external pure returns (uint256) { return GGB_MAX_NFT_SUPPLY; }
+    function holdForNft() external pure returns (uint256) { return GGB_HOLD_FOR_NFT; }
+    function batchMintNftMax() external pure returns (uint256) { return GGB_BATCH_MINT_NFT_MAX; }
+    function nftTraitCount() external pure returns (uint256) { return GGB_NFT_TRAIT_COUNT; }
+
+    /// @param traitId Trait 0..15.
+    /// @return count Number of NFTs with this trait.
+    /// @return bps Rarity in basis points (count * 10000 / totalNftMinted) or 0 if none minted.
+    function getTraitRarity(uint8 traitId) external view returns (uint256 count, uint256 bps) {
+        if (traitId >= GGB_NFT_TRAIT_COUNT) return (0, 0);
+        count = 0;
+        for (uint256 i = 0; i < _allNftIds.length; i++) {
+            if (nftTraitOf[_allNftIds[i]] == traitId) count++;
+        }
+        if (totalNftMinted == 0) return (count, 0);
+        bps = (count * GGB_BPS_DENOM) / totalNftMinted;
