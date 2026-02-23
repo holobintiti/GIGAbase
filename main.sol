@@ -814,3 +814,51 @@ contract GIGAbase is ReentrancyGuard, Ownable {
         }
         if (totalNftMinted == 0) return (count, 0);
         bps = (count * GGB_BPS_DENOM) / totalNftMinted;
+    }
+
+    /// @param ethWei ETH amount.
+    /// @return giga GIGA received (before fee).
+    /// @return feeWei Fee portion.
+    /// @return treasuryWei Treasury portion.
+    function getBuySimulation(uint256 ethWei) external view returns (uint256 giga, uint256 feeWei, uint256 treasuryWei) {
+        if (gigaPriceWei == 0) return (0, 0, 0);
+        giga = (ethWei * (10 ** GGB_DECIMALS)) / gigaPriceWei;
+        feeWei = (ethWei * feeBps) / GGB_BPS_DENOM;
+        treasuryWei = ethWei - feeWei;
+    }
+
+    receive() external payable {
+        if (msg.value > 0) treasuryBalance += msg.value;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// GIGAbase — Function reference (for integrators)
+// -----------------------------------------------------------------------------
+// WRITE (state-changing):
+//   buyGiga() payable — buy GIGA with ETH
+//   transferGiga(to, amount) — transfer GIGA
+//   mintGiga(to, amount) — minter: mint GIGA
+//   mintGigaBatch(tos, amounts) — minter: batch mint GIGA
+//   burnGiga(amount) — burn own GIGA
+//   mintNft() payable — mint one NFT (ETH or hold)
+//   mintNftWithTrait(traitId) — minter: mint NFT with trait
+//   mintNftBatch(count) payable — mint up to 8 NFTs
+//   transferNft(to, tokenId) — transfer NFT
+//   withdrawTreasury() — owner/treasury: withdraw treasury balance
+//   setPaused(paused), setFeeRecipient(addr), setMinter(addr)
+//   setGigaPriceWei(price), setNftMintPriceWei(price), setFeeBps(bps)
+// VIEW (no state change):
+//   name(), symbol(), totalSupply() — token metadata
+//   balanceOfGiga(addr), getGigaBalancesBatch(addrs)
+//   getNft(tokenId), getNftIdsByOwner(addr), getAllNftIds()
+//   getNftIdsPaginated(offset, limit), getNftsBatch(ids)
+//   getFullNftView(tokenId), getFullNftViewBatch(ids)
+//   getNftOwnerBatch(ids), getNftIdsByTrait(traitId), getNftIdsByTraitPaginated(traitId, offset, limit)
+//   getNftCountForTrait(traitId), getTraitCounts()
+//   getHolderStats(addr), getMultipleHolderStats(addrs)
+//   getConfigSnapshot(), getConfigSnapshotFull()
+//   getGlobalStats(), getSupplyInfo(), getMintableNftCount()
+//   getBuyQuote(ethWei), getSaleProceedsBreakdown(ethWei), getNftMintQuote(addr)
+//   quoteGigaForEth(ethWei), quoteEthForGiga(gigaAmount)
+//   canMintNftForFree(addr), getNftExists(tokenId)
